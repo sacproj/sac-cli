@@ -1,0 +1,437 @@
+#!/usr/bin/env bash
+set -eou pipefail
+
+trap "exit" INT TERM ERR
+trap "kill 0" EXIT
+
+VERSION="2.0.3"
+CMD=${1:-""}
+UNAME=$(uname -s)
+SAC_SHARE_DIR=/usr/local/share/sac
+SAC_THEMES_DIR=$SAC_SHARE_DIR/themes
+HUGO_CONFIG=config.yaml
+BUILD_PATH=build
+
+function _help() {
+  echo "sac: ${VERSION} on ${UNAME}"
+  echo ""
+  echo "Usage: sac <command>"
+  echo ""
+  echo "Available commands:"
+  echo "  doctor      Show information about the installed tooling"
+  echo "  theme       Theme management"
+  echo "  deck        Deck management"
+  echo "  slide       Slide management"
+  echo ""
+  echo "Theme sub-commands"
+  echo "  list <owner>/<theme> [<version>]    List theme from GitHub"
+  echo "  install                             Install theme"
+  echo "    github <owner>/<theme>            Install theme from Github latest release"
+  echo "    git <git> [<tag>]                 Install theme from Git URL (with optional <tag>)"
+  echo "    tarball <tarball>                 Install theme from tarball"
+  echo "  installed                           List installed themes and versions"
+  echo "  remove <theme> <version>            Remove installed <theme>/<version>"
+  echo ""
+  echo "Deck sub-commands"
+  echo "  new <deck-directory> <theme>...     Create a new slides deck with themes"
+  echo "  code                                Serve slides deck with live updates"
+  echo "  html                                Build slides deck in HTML into public directory"
+  echo "  pdf [<pdf>] [<timeout>]             Build slides deck in PDF (default <pdf>=slides.pdf <timeout>=10000)"
+  echo ""
+  echo "Slide sub-commands"
+  echo "  new <slide-name.md>                 Create a new slide"
+  exit 0
+}
+
+function join() {
+  local IFS="$1"
+  shift
+  echo "$*"
+}
+
+function _sudo() {
+  if ! sudo -vn &>/dev/null; then
+    echo "Enter your password (for sudo access):"
+  fi
+  sudo true
+}
+
+function _check_content() {
+  if [ ! -d .git ] || [ ! -d content ]; then
+    echo "ERROR: Command must be launched from project's root path"
+    exit 255
+  fi
+}
+
+function _doctor() {
+  local ERRORS=0
+  echo "sac ${VERSION} on ${UNAME}"
+  echo
+  echo -n "# Checking jq: "
+  if command -v jq &> /dev/null; then
+    echo "OK"
+    jq --version
+  else
+    echo "NOK"
+    echo "Missing jq"
+    ERRORS=$((ERRORS + 1))
+  fi
+  echo
+  echo -n "# Checking realpath: "
+  if command -v realpath &> /dev/null; then
+    echo "OK"
+    realpath --version
+  else
+    echo "NOK"
+    echo "Missing realpath (from coreutils)"
+    ERRORS=$((ERRORS + 1))
+  fi
+  echo
+  echo -n "# Checking hugo: "
+  if command -v hugo &> /dev/null; then
+    echo "OK"
+    hugo version
+  else
+    echo "NOK"
+    echo "Missing hugo"
+    ERRORS=$((ERRORS + 1))
+  fi
+  echo
+  if [ "$ERRORS" -ge 1 ]; then
+    echo "Please fix given error(s)"
+  fi
+}
+
+function _theme() {
+  local ACTION=${1:-}
+
+  case $ACTION in
+    "install")
+      shift
+      _theme_install "$@"
+      ;;
+    "installed")
+      tree -L 2 $SAC_THEMES_DIR
+      ;;
+    "remove")
+      shift
+      local THEME
+      local VERSION
+      local THEME_DIR
+      THEME=$1
+      VERSION=$2
+      THEME_DIR=$SAC_THEMES_DIR/$THEME/$VERSION
+
+      _sudo
+      sudo rm -rf "$THEME_DIR"
+      sudo rmdir -p "$(dirname "$THEME_DIR")" &> /dev/null || true
+      ;;
+    *)
+      _help
+      ;;
+  esac
+}
+
+function _theme_install() {
+  local ORIGIN=${1:-}
+  local TMP_DIR
+
+  TMP_DIR=$(mktemp -d)
+  case $ORIGIN in
+    "github")
+      shift
+      local OWNER_REPOS=$1
+      local URL
+      URL=$(curl -sL "https://api.github.com/repos/$OWNER_REPOS/releases/latest" | jq -r '.assets[].browser_download_url')
+      curl -sL "$URL" | tar xz -C "$TMP_DIR"
+      ;;
+
+    "git")
+      shift
+      local URL=$1
+      if [ $# == 2 ]; then
+        local TAG=$2
+        git clone --depth=1 --branch "$TAG" "$URL" "$TMP_DIR"
+      else
+        git clone --depth=1 "$URL" "$TMP_DIR"
+      fi
+      ;;
+
+    "tarball")
+      shift
+      local TARBALL=$1
+      tar xz -C "$TMP_DIR" -f "$TARBALL"
+      ;;
+
+    *)
+      _help
+      ;;
+  esac
+
+  if [ -f "$TMP_DIR/VERSION" ]; then
+    echo "Installing $(cat "$TMP_DIR/VERSION") into $SAC_THEMES_DIR"
+  else
+    echo "VERSION file not found, it must be present in theme"
+    exit 254
+  fi
+
+  local THEME_DIR
+  THEME_DIR=$SAC_THEMES_DIR/$(cat "$TMP_DIR/VERSION")
+  _sudo
+  sudo mkdir -p -m 755 "$(dirname "$THEME_DIR")"
+  sudo rm -rf "$THEME_DIR"
+  sudo mv "$TMP_DIR" "$THEME_DIR"
+  sudo chmod 755 "$THEME_DIR"
+}
+
+function _deck() {
+  local ACTION=${1:-}
+
+  case $ACTION in
+    "new")
+      shift
+      _deck_new "$@"
+      ;;
+    "code")
+      shift
+      hugo serve
+      ;;
+    "html")
+      shift
+      rm -rf public
+      hugo --gc --minify
+      ;;
+    "pdf")
+      shift
+      _deck_pdf "$@"
+      ;;
+    *)
+      _help
+      ;;
+  esac
+}
+
+function _deck_new() {
+  local DIR=$1
+  local THEMES=()
+  local HUGO_THEMES=()
+  local REV=()
+  local THEME
+
+  shift
+  if [ $# -eq 0 ]; then
+    echo "Missing theme(s)"
+    exit 253
+  fi
+
+  while [ $# -ge 1 ]; do
+    THEME=$1
+
+    if [ ! -d "$(realpath "$SAC_THEMES_DIR/$THEME")" ]; then
+      echo "'$THEME' not found in $SAC_THEMES_DIR"
+      exit 252
+    fi
+    THEMES+=( "$THEME" )
+    if [ -f "$SAC_THEMES_DIR/$THEME/theme.toml" ]; then
+      HUGO_THEMES+=( "\"$THEME\"" )
+    fi
+    shift
+  done
+
+  # Reverse themes array for Hugo
+  for (( i=${#HUGO_THEMES[@]}-1; i>=0; i-- )); do
+    REV[${#REV[@]}]=${HUGO_THEMES[i]}
+  done
+  THEME="$(join , "${REV[@]}")"
+
+  # Create slides deck
+  mkdir -p "$DIR"
+  cd "$DIR"
+
+  # Initialize git repository (if required)
+  if [ ! -d .git ]; then
+    git init
+  fi
+  if [ ! -f .gitignore ]; then
+  cat <<-EOF > .gitignore
+.vscode
+*.pdf
+public
+resources
+EOF
+  elif ! grep -q "^$BUILD_PATH" .gitignore; then
+    echo "$BUILD_PATH" >> .gitignore
+  fi
+
+  # Prepare configuration and content
+  cat <<-EOF > $HUGO_CONFIG
+baseURL: https://example.org/
+languageCode: en-us
+disableKinds: ["taxonomy", "taxonomyTerm", "RSS", "sitemap"]
+outputs:
+  home: ["sac"]
+  page: ["sac"]
+  section: ["sac"]
+themesDir: "/usr/local/share/sac/themes"
+theme: [$THEME]
+markup:
+  goldmark:
+    renderer:
+      unsafe: true
+EOF
+
+  # Create directories
+  mkdir -p content/home
+  mkdir -p static/{charts,codes,diagrams,images,sessions,sounds,videos}
+  touch static/{charts,codes,diagrams,images,sessions,sounds,videos}/.gitkeep
+
+  local MD_SNIPPETS=.vscode/sac.code-snippets
+  mkdir -p .vscode
+  touch $MD_SNIPPETS
+
+  # Copy content, snippets and params from themes
+  local TMP_FILE
+  TMP_FILE=$(mktemp)
+  for THEME in "${THEMES[@]}"; do
+    if [ -d "$SAC_THEMES_DIR/$THEME/content" ]; then
+      echo "Adding content from $THEME"
+      cp -rf "$SAC_THEMES_DIR/$THEME"/content/* content/
+    fi
+    if [ -f "$SAC_THEMES_DIR/$THEME/params.yaml" ]; then
+      echo "Adding params from $THEME"
+      cat "$SAC_THEMES_DIR/$THEME/params.yaml" >> $HUGO_CONFIG
+    fi
+    if [ -f "$SAC_THEMES_DIR/$THEME/$MD_SNIPPETS" ]; then
+      echo "Adding snippets from $THEME"
+      cat "$MD_SNIPPETS" "$SAC_THEMES_DIR/$THEME/$MD_SNIPPETS" | jq -s add > "$TMP_FILE"
+      mv "$TMP_FILE" "$MD_SNIPPETS"
+    fi
+    rm -f "$TMP_FILE"
+  done
+}
+
+function _install_linux_node() {
+  if [ -x "$(command -v brew)" ];      then brew install node
+  elif [ -x "$(command -v apk)" ];     then sudo apk add --no-cache nodejs nodejs-npm
+  elif [ -x "$(command -v apt-get)" ]; then sudo apt-get install nodejs
+  elif [ -x "$(command -v dnf)" ];     then sudo dnf install nodejs
+  elif [ -x "$(command -v yum)" ];     then sudo yum install nodejs
+  elif [ -x "$(command -v zypper)" ];  then sudo zypper install nodejs
+  else echo "Failed to install 'nodejs': you must manually install it"; fi
+}
+
+function _check_installed_pdf() {
+  if ! command -v npm &> /dev/null; then
+    echo "Installing 'nodejs'"
+    case ${UNAME} in
+      "Darwin")
+        brew install node
+        ;;
+      "Linux")
+        _install_linux_node
+        ;;
+    esac
+  fi
+
+  if ! npm list --depth=0 -g puppeteer &> /dev/null; then
+    echo "Installing 'puppeteer'"
+    npm install -g puppeteer
+  fi
+}
+
+function _deck_pdf() {
+  local FILENAME=${1:-slides.pdf}
+  local TIMEOUT=${2:-10000}
+
+  # Check if required tools are installed
+  set +e
+  _check_installed_pdf
+  set -e
+
+  # Launch Hugo server
+  echo "Launching hugo server"
+  coproc hugo server
+
+  echo "Waiting for current URL"
+  local FD=${COPROC[0]}
+  local DONE=0
+  local LINE
+  local URL
+  while [ $DONE == 0 ]; do
+    read -r -u "${FD}" LINE
+    if echo "$LINE" | grep -q "Web Server is available at"; then
+      # shellcheck disable=SC2001
+      URL=$(echo "$LINE" | sed -e 's|^.* at \(.*\) (bind.*)$|\1|')
+      DONE=1
+    fi
+    echo "$LINE"
+  done
+
+  # Build PDF
+  local PDFJS
+  PDFJS="$(dirname "$(dirname "$(realpath "$0")")")/libexec/pdf.js"
+  NODE_PATH=$(npm root --quiet -g) node "$PDFJS" "$URL?print-pdf" "$FILENAME" "$TIMEOUT"
+}
+
+function _slide() {
+  local ACTION=$1
+
+  case $ACTION in
+    "new")
+      shift
+      _slide_new "$@"
+      ;;
+    *)
+      _help
+      ;;
+  esac
+}
+
+function _setWeight() {
+  local CONTENT=$1
+  local WEIGHT=$2
+
+  sed -e "s/^weight:\ *.*/weight:\ $WEIGHT/" "$CONTENT" > "$CONTENT.tmp"
+  mv "$CONTENT.tmp" "$CONTENT"
+}
+
+function _slide_new() {
+  local SLIDE=$1
+  local NB
+  local WEIGHT
+
+  if [ ! "${SLIDE: -3}" == ".md" ]; then
+    echo "Slide filename extension should be '.md'"
+    exit 253
+  fi
+
+  hugo new "home/$SLIDE"
+  NB=$(find content/home -name "*.md" | wc -l)
+  WEIGHT=$((NB * 10))
+  _setWeight "content/home/$SLIDE" "$WEIGHT"
+}
+
+CMD=${1:-""}
+case $CMD in
+  "doctor")
+    _doctor
+    ;;
+  "theme")
+    shift
+    _theme "$@"
+    ;;
+  "deck")
+    shift
+    _deck "$@"
+    ;;
+  "slide")
+    shift
+    _slide "$@"
+    ;;
+  *)
+    _help
+    ;;
+esac
+
+# Normalize output
+exit 0
