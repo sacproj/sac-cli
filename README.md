@@ -6,7 +6,10 @@
 - share slides
 
 # Demo
-[Check out the live demo.](https://sacproj.github.io/demo/)
+Check out the [live demo](https://sacproj.github.io/demo/).
+
+# Documentation
+See online [documentation](https://sacproj.github.io/documentation/).
 
 # Usage
 ```
