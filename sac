@@ -11,6 +11,7 @@ SAC_SHARE_DIR=/usr/local/share/sac
 SAC_THEMES_DIR=$SAC_SHARE_DIR/themes
 HUGO_CONFIG=config.yaml
 BUILD_PATH=build
+MD_SNIPPETS=.vscode/sac.code-snippets
 
 function _help() {
   echo "sac: ${VERSION} on ${UNAME}"
@@ -21,10 +22,9 @@ function _help() {
   echo "  doctor      Show information about the installed tooling"
   echo "  theme       Theme management"
   echo "  deck        Deck management"
-  echo "  slide       Slide management"
+  echo "  content     Content management"
   echo ""
-  echo "Theme sub-commands"
-  echo "  list <owner>/<theme> [<version>]    List theme from GitHub"
+  echo "theme sub-commands"
   echo "  install                             Install theme"
   echo "    github <owner>/<theme>            Install theme from Github latest release"
   echo "    git <git> [<tag>]                 Install theme from Git URL (with optional <tag>)"
@@ -32,14 +32,14 @@ function _help() {
   echo "  installed                           List installed themes and versions"
   echo "  remove <theme> <version>            Remove installed <theme>/<version>"
   echo ""
-  echo "Deck sub-commands"
+  echo "deck sub-commands"
   echo "  new <deck-directory> <theme>...     Create a new slides deck with themes"
   echo "  code                                Serve slides deck with live updates"
   echo "  html                                Build slides deck in HTML into public directory"
   echo "  pdf [<pdf>] [<timeout>]             Build slides deck in PDF (default <pdf>=slides.pdf <timeout>=10000)"
   echo ""
-  echo "Slide sub-commands"
-  echo "  new <slide-name.md>                 Create a new slide"
+  echo "content sub-commands"
+  echo "  new <content-name.md>               Create a new content file"
   exit 0
 }
 
@@ -74,6 +74,16 @@ function _doctor() {
   else
     echo "NOK"
     echo "Missing jq"
+    ERRORS=$((ERRORS + 1))
+  fi
+  echo
+  echo -n "# Checking yq: "
+  if command -v jq &> /dev/null; then
+    echo "OK"
+    yq --version
+  else
+    echo "NOK"
+    echo "Missing yq"
     ERRORS=$((ERRORS + 1))
   fi
   echo
@@ -194,7 +204,7 @@ function _deck() {
       ;;
     "code")
       shift
-      hugo serve
+      _deck_code "$@"
       ;;
     "html")
       shift
@@ -285,13 +295,11 @@ EOF
   mkdir -p static/{charts,codes,diagrams,images,sessions,sounds,videos}
   touch static/{charts,codes,diagrams,images,sessions,sounds,videos}/.gitkeep
 
-  local MD_SNIPPETS=.vscode/sac.code-snippets
-  mkdir -p .vscode
-  touch $MD_SNIPPETS
-
-  # Copy content, snippets and params from themes
+  # Copy content, params and snippets from themes
   local TMP_FILE
   TMP_FILE=$(mktemp)
+  mkdir -p "$(dirname $MD_SNIPPETS)"
+  touch $MD_SNIPPETS
   for THEME in "${THEMES[@]}"; do
     if [ -d "$SAC_THEMES_DIR/$THEME/content" ]; then
       echo "Adding content from $THEME"
@@ -308,6 +316,33 @@ EOF
     fi
     rm -f "$TMP_FILE"
   done
+}
+
+function _deck_code() {
+  local TMP_FILE
+  TMP_FILE=$(mktemp)
+
+  local REV=()
+  local THEMES=()
+  mapfile -t REV < <(yq -j eval '.theme' config.yaml | jq -r '.[]')
+
+  # Reverse themes array because of Hugo ordering
+  for (( i=${#REV[@]}-1; i>=0; i-- )); do
+    THEMES[${#THEMES[@]}]=${REV[i]}
+  done
+
+  # Copy snippets from themes
+  for THEME in "${THEMES[@]}"; do
+    if [ -f "$SAC_THEMES_DIR/$THEME/$MD_SNIPPETS" ]; then
+      echo "Updating snippets from $THEME"
+      cat "$MD_SNIPPETS" "$SAC_THEMES_DIR/$THEME/$MD_SNIPPETS" | jq -s add > "$TMP_FILE"
+      mv "$TMP_FILE" "$MD_SNIPPETS"
+    fi
+    rm -f "$TMP_FILE"
+  done
+
+  # Hugo with live update enabled
+  hugo serve
 }
 
 function _install_linux_node() {
@@ -424,7 +459,7 @@ case $CMD in
     shift
     _deck "$@"
     ;;
-  "slide")
+  "content")
     shift
     _slide "$@"
     ;;

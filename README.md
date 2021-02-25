@@ -16,13 +16,12 @@ Available commands:
   doctor      Show information about the installed tooling
   theme       Theme management
   deck        Deck management
-  slide       Slide management
+  content     Content management
 ```
 
 ## Theme Management
 ```
-Theme sub-commands
-  list <owner>/<theme> [<version>]    List theme from GitHub
+theme sub-commands
   install                             Install theme
     github <owner>/<theme>            Install theme from Github latest release
     git <git> [<tag>]                 Install theme from Git URL (with optional <tag>)
@@ -33,17 +32,17 @@ Theme sub-commands
 
 ## Deck Management
 ```
-Deck sub-commands
+deck sub-commands
   new <deck-directory> <theme>...     Create a new slides deck with themes
   code                                Serve slides deck with live updates
   html                                Build slides deck in HTML into public directory
   pdf [<pdf>] [<timeout>]             Build slides deck in PDF (default <pdf>=slides.pdf <timeout>=10000)
 ```
 
-## Slide Management
+## Content Management
 ```
-Slide sub-commands
-  new <slide-name.md>                 Create a new slide
+content sub-commands
+  new <content-name.md>               Create a new content file
 ```
 
 # Project Management
