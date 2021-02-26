@@ -62,4 +62,4 @@ Developed with passion by Stéphane Este-Gracias and great open source [contribu
 sac's code is released under [MIT license](LICENSE).
 
 # Acknowledgments
-- [Data Essential](https://www.data-essential.com/) to give me the time to develop this project.
+- [Data Essential](https://www.data-essential.com/) to give me the time to develop and maintain this project.
