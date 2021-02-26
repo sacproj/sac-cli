@@ -176,7 +176,8 @@ function _theme_install() {
         local TAG=$2
         git clone --depth=1 --branch "$TAG" "$URL" "$TMP_DIR"
       else
-        git clone --depth=1 "$URL" "$TMP_DIR"
+        # No depth limit to use "git describe" afterwards
+        git clone "$URL" "$TMP_DIR"
       fi
       # Create theme version file
       local THEME_NAME
