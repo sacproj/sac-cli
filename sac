@@ -9,6 +9,7 @@ CMD=${1:-""}
 UNAME=$(uname -s)
 SAC_SHARE_DIR=/usr/local/share/sac
 SAC_THEMES_DIR=$SAC_SHARE_DIR/themes
+SAC_THEME_VERSION=VERSION
 HUGO_CONFIG=config.yaml
 BUILD_PATH=build
 MD_SNIPPETS=.vscode/sac.code-snippets
@@ -107,6 +108,16 @@ function _doctor() {
     ERRORS=$((ERRORS + 1))
   fi
   echo
+  echo -n "# Checking git: "
+  if command -v git &> /dev/null; then
+    echo "OK"
+    git --version
+  else
+    echo "NOK"
+    echo "Missing git"
+    ERRORS=$((ERRORS + 1))
+  fi
+  echo
   if [ "$ERRORS" -ge 1 ]; then
     echo "Please fix given error(s)"
   fi
@@ -145,6 +156,7 @@ function _theme() {
 function _theme_install() {
   local ORIGIN=${1:-}
   local TMP_DIR
+  local IS_TARBALL="false"
 
   TMP_DIR=$(mktemp -d)
   case $ORIGIN in
@@ -154,6 +166,7 @@ function _theme_install() {
       local URL
       URL=$(curl -sL "https://api.github.com/repos/$OWNER_REPOS/releases/latest" | jq -r '.assets[].browser_download_url')
       curl -sL "$URL" | tar xz -C "$TMP_DIR"
+      IS_TARBALL="true"
       ;;
 
     "git")
@@ -165,12 +178,24 @@ function _theme_install() {
       else
         git clone --depth=1 "$URL" "$TMP_DIR"
       fi
+      # Create theme version file
+      local THEME_NAME
+      local THEME_VERSION
+      THEME_NAME=$(basename "$URL" .git)
+      THEME_VERSION=$(cd "$TMP_DIR"; git describe --tags)
+      if [ "$THEME_NAME" == "sac-theme" ]; then
+        THEME_NAME=sac
+      elif [[ "$THEME_NAME" == sac-theme-* ]]; then
+        THEME_NAME=${THEME_NAME##"sac-theme-"}
+      fi
+      echo "$THEME_NAME/$THEME_VERSION" > "$TMP_DIR/$SAC_THEME_VERSION"
       ;;
 
     "tarball")
       shift
       local TARBALL=$1
       tar xz -C "$TMP_DIR" -f "$TARBALL"
+      IS_TARBALL="true"
       ;;
 
     *)
@@ -178,15 +203,19 @@ function _theme_install() {
       ;;
   esac
 
-  if [ -f "$TMP_DIR/VERSION" ]; then
-    echo "Installing $(cat "$TMP_DIR/VERSION") into $SAC_THEMES_DIR"
+  if [ -f "$TMP_DIR/$SAC_THEME_VERSION" ]; then
+    echo "Installing $(cat "$TMP_DIR/$SAC_THEME_VERSION") into $SAC_THEMES_DIR"
   else
-    echo "VERSION file not found, it must be present in theme"
+    if [ "$IS_TARBALL" == "true" ]; then
+      echo "$SAC_THEME_VERSION file not found in tarball, it must be present."
+    else
+      echo "Internal error: $SAC_THEME_VERSION must be computed by this command, but not"
+    fi
     exit 254
   fi
 
   local THEME_DIR
-  THEME_DIR=$SAC_THEMES_DIR/$(cat "$TMP_DIR/VERSION")
+  THEME_DIR=$SAC_THEMES_DIR/$(cat "$TMP_DIR/$SAC_THEME_VERSION")
   _sudo
   sudo mkdir -p -m 755 "$(dirname "$THEME_DIR")"
   sudo rm -rf "$THEME_DIR"
