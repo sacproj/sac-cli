@@ -40,7 +40,7 @@ prepare-release: $(BUILD_PATH) check_version
 	$(SED) -e "s|VERSION=\".*|VERSION=\"$(VERSION)\"|" $(SAC_CMD) > $(BUILD_SAC_CMD)
 	$(CP) $(BUILD_SAC_CMD) $(SAC_CMD)
 	$(GIT) add $(SAC_CMD)
-	$(GIT) commit -s -m "release: $(VERSION)"
+	$(GIT) commit --allow-empty -s -m "release: $(VERSION)"
 	$(GIT) push
 	$(RM) $(RELEASE_TARBALL)
 	$(TAR) cvzf $(RELEASE_TARBALL) $(RELEASE_ARTIFACTS)
