@@ -68,6 +68,16 @@ function _doctor() {
   local ERRORS=0
   echo "sac ${VERSION} on ${UNAME}"
   echo
+  echo -n "# Checking git: "
+  if command -v git &> /dev/null; then
+    echo "OK"
+    git --version
+  else
+    echo "NOK"
+    echo "Missing git"
+    ERRORS=$((ERRORS + 1))
+  fi
+  echo
   echo -n "# Checking jq: "
   if command -v jq &> /dev/null; then
     echo "OK"
@@ -88,6 +98,16 @@ function _doctor() {
     ERRORS=$((ERRORS + 1))
   fi
   echo
+  echo -n "# Checking tree: "
+  if command -v tree &> /dev/null; then
+    echo "OK"
+    tree --version
+  else
+    echo "NOK"
+    echo "Missing tree"
+    ERRORS=$((ERRORS + 1))
+  fi
+  echo
   echo -n "# Checking realpath: "
   if command -v realpath &> /dev/null; then
     echo "OK"
@@ -105,16 +125,6 @@ function _doctor() {
   else
     echo "NOK"
     echo "Missing hugo"
-    ERRORS=$((ERRORS + 1))
-  fi
-  echo
-  echo -n "# Checking git: "
-  if command -v git &> /dev/null; then
-    echo "OK"
-    git --version
-  else
-    echo "NOK"
-    echo "Missing git"
     ERRORS=$((ERRORS + 1))
   fi
   echo
