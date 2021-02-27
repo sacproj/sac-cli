@@ -249,7 +249,8 @@ function _deck() {
     "html")
       shift
       rm -rf public
-      hugo --gc --minify
+      # shellcheck disable=SC2086
+      hugo ${SAC_DECK_HTML_HUGO_ARGS:---gc --minify}
       ;;
     "pdf")
       shift
@@ -382,7 +383,8 @@ function _deck_code() {
   done
 
   # Hugo with live update enabled
-  hugo serve
+  # shellcheck disable=SC2086
+  hugo server ${SAC_DECK_CODE_HUGO_ARGS:-}
 }
 
 function _install_linux_node() {
@@ -425,7 +427,8 @@ function _deck_pdf() {
 
   # Launch Hugo server
   echo "Launching hugo server"
-  coproc hugo server
+  # shellcheck disable=SC2086
+  coproc hugo server ${SAC_DECK_PDF_HUGO_ARGS:-}
 
   echo "Waiting for current URL"
   local FD=${COPROC[0]}
