@@ -4,7 +4,7 @@ set -eou pipefail
 trap "exit" INT TERM ERR
 trap "kill 0" EXIT
 
-VERSION="2.0.4"
+VERSION="2.0.5"
 CMD=${1:-""}
 UNAME=$(uname -s)
 SAC_SHARE_DIR=/usr/local/share/sac
