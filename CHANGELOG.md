@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.0.5] - 2021-02-27
+### Added
+- Dockerfile
+
 ## [2.0.4] - 2021-02-27
 ### Fixed
 - Fix `sac deck pdf` on Docker
@@ -28,7 +32,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changed
 - Full change of `sac` command line
 
-[Unreleased]: https://github.com/sacproj/sac-cli/compare/2.0.4...HEAD
+[Unreleased]: https://github.com/sacproj/sac-cli/compare/2.0.5...HEAD
+[2.0.5]: https://github.com/sacproj/sac-cli/compare/2.0.4...2.0.5
 [2.0.4]: https://github.com/sacproj/sac-cli/compare/2.0.3...2.0.4
 [2.0.3]: https://github.com/sacproj/sac-cli/compare/2.0.2...2.0.3
 [2.0.2]: https://github.com/sacproj/sac-cli/compare/2.0.1...2.0.2
