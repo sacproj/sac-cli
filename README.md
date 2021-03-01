@@ -48,6 +48,9 @@ content sub-commands
   new <content-name.md>               Create a new content file
 ```
 
+# Container Image
+A container image is available at [sacproj/sac](https://hub.docker.com/r/sacproj/sac).
+
 # Project Management
 This project adheres to:
 - [Developer Certificate of Origin](https://developercertificate.org/)
