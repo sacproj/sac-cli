@@ -373,6 +373,8 @@ function _deck_code() {
   done
 
   # Copy snippets from themes
+  mkdir -p "$(dirname $MD_SNIPPETS)"
+  touch $MD_SNIPPETS
   for THEME in "${THEMES[@]}"; do
     if [ -f "$SAC_THEMES_DIR/$THEME/$MD_SNIPPETS" ]; then
       echo "Updating snippets from $THEME"
