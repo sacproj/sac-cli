@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.0.8] - 2021-06-30
+### Fixed
+- Fix build slides deck in PDF timeout
+
 ## [2.0.7] - 2021-06-21
 ### Fixed
 - Touch `.vscode/sac.code-snippets` when `sac deck code`
