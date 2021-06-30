@@ -420,7 +420,7 @@ function _check_installed_pdf() {
 
 function _deck_pdf() {
   local FILENAME=${1:-slides.pdf}
-  local TIMEOUT=${2:-10000}
+  local TIMEOUT=${2:-60000}
 
   # Check if required tools are installed
   set +e
