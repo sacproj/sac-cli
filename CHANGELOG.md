@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.1.0] - 2021-07-21
+### Added
+- Default to latest theme version on `deck new` when no version specified
+
 ## [2.0.8] - 2021-06-30
 ### Fixed
 - Fix build slides deck in PDF timeout
