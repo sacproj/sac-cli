@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.2.0] - 2021-07-21
+### Added
+- `deck print` output to PDF (print format)
+
+### Changed
+- `deck pdf` output to PDF (full format)
+
 ## [2.1.0] - 2021-07-21
 ### Added
 - Default to latest theme version on `deck new` when no version specified
@@ -48,7 +55,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changed
 - Full change of `sac` command line
 
-[Unreleased]: https://github.com/sacproj/sac-cli/compare/2.0.6...HEAD
+[Unreleased]: https://github.com/sacproj/sac-cli/compare/2.2.0...HEAD
+[2.2.0]: https://github.com/sacproj/sac-cli/compare/2.1.0...2.2.0
+[2.1.0]: https://github.com/sacproj/sac-cli/compare/2.0.8...2.1.0
+[2.0.8]: https://github.com/sacproj/sac-cli/compare/2.0.7...2.0.8
+[2.0.7]: https://github.com/sacproj/sac-cli/compare/2.0.6...2.0.7
 [2.0.6]: https://github.com/sacproj/sac-cli/compare/2.0.5...2.0.6
 [2.0.5]: https://github.com/sacproj/sac-cli/compare/2.0.4...2.0.5
 [2.0.4]: https://github.com/sacproj/sac-cli/compare/2.0.3...2.0.4
