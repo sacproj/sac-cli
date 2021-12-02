@@ -36,8 +36,9 @@ function _help() {
   echo "deck sub-commands"
   echo "  new <deck-directory> <theme>...     Create a new slides deck with themes"
   echo "  code                                Serve slides deck with live updates"
-  echo "  html                                Build slides deck in HTML into public directory"
-  echo "  pdf [<pdf>] [<timeout>]             Build slides deck in PDF (default <pdf>=slides.pdf <timeout>=10000)"
+  echo "  html                                Build slides deck to HTML into public directory"
+  echo "  pdf [<pdf>] [<timeout>]             Build slides deck to PDF (default <pdf>=slides.pdf <timeout>=10000)"
+  echo "  print [<pdf>] [<timeout>]           Build slides deck to PDF in print format (default <pdf>=slides.pdf <timeout>=10000)"
   echo ""
   echo "content sub-commands"
   echo "  new <content-name.md>               Create a new content file"
@@ -254,7 +255,11 @@ function _deck() {
       ;;
     "pdf")
       shift
-      _deck_pdf "$@"
+      _deck_pdf pdf "$@"
+      ;;
+    "print")
+      shift
+      _deck_pdf print "$@"
       ;;
     *)
       _help
@@ -430,8 +435,9 @@ function _check_installed_pdf() {
 }
 
 function _deck_pdf() {
-  local FILENAME=${1:-slides.pdf}
-  local TIMEOUT=${2:-60000}
+  local TYPE=$1
+  local FILENAME=${2:-slides.pdf}
+  local TIMEOUT=${3:-60000}
 
   # Check if required tools are installed
   set +e
@@ -458,10 +464,22 @@ function _deck_pdf() {
     echo "$LINE"
   done
 
+  # Set ACTION
+  local ACTION
+  case $TYPE in
+    "pdf")
+      ACTION="exportToPdf"
+      ;;
+    "print")
+      ACTION="printToPdf"
+      URL="$URL?print-pdf"
+      ;;
+  esac
+
   # Build PDF
   local PDFJS
   PDFJS="$(dirname "$(dirname "$(realpath "$0")")")/libexec/pdf.js"
-  NODE_PATH=$(npm root --quiet -g) node "$PDFJS" "$URL?print-pdf" "$FILENAME" "$TIMEOUT"
+  NODE_PATH=$(npm root --quiet -g) node "$PDFJS" "$ACTION" "$URL" "$FILENAME" "$TIMEOUT"
 }
 
 function _slide() {

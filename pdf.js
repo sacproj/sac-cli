@@ -1,5 +1,5 @@
 const puppeteer = require('puppeteer');
-const { exec } = require("child_process");
+const { spawn } = require("child_process");
 
 async function hasNextSlide(page) {
   return page.evaluate(_ => !Reveal.isLastSlide() || Reveal.availableFragments().next);
@@ -33,34 +33,49 @@ async function screenshot(page, index) {
   });
 }
 
-function run(command) {
-  return new Promise((done, failed) => {
-    exec(command, (err, stdout, stderr) => {
-      if (err) {
-        err.stdout = stdout
-        err.stderr = stderr
-        failed(err)
-        return
-      }
-      done({ stdout, stderr })
-    })
-  })
+function run(command, args) {
+
 }
 
-async function exportPdf(index) {
-  console.log(` ✅ ${index } slides generated`);
-  console.log(`Exporting slides.pdf`);
-  let slides = '';
+async function convertToPdf(index, output) {
+  console.log(` ✅ ${index + 1} slides generated`);
+  console.log(`Exporting ${output}`);
+  let args = [ '-monitor' ];
   for (let current = 0; current <= index; current++) {
-    slides = slides + ` slide-${current}.png`;
+    args.push(`slide-${current}.png`);
   }
-  await run(`convert -monitor${slides} slides.pdf`);
+  args.push(output);
+  spawn('convert', args, { stdio: 'inherit' });
+}
+
+async function printToPdf(page, output, timeout) {
+  await page.waitForSelector('.print-pdf', {visible: true, timeout: timeout });
+  await page.pdf({ path: output, format: 'A4' });
+}
+
+async function exportToPdf(page, output) {
+  const spinner = [ '❤️ ', '🧡', '💛', '💚', '💙', '💜', '🤎', '🖤', '🤍' ];
+  let index = 0;
+  await screenshot(page, index);
+  while (await hasNextSlide(page)) {
+    process.stdout.clearLine();
+    process.stdout.cursorTo(0);
+    process.stdout.write(" " + spinner[index % spinner.length] + " Generating slide #" + index + ": " + await currentSlide(page));
+    index++;
+    await nextSlide(page);
+    await delay(1000);
+    await screenshot(page, index);
+  }
+  process.stdout.clearLine();
+  process.stdout.cursorTo(0);
+  await convertToPdf(index, output);
 }
 
 (async() => {
-  const url = process.argv[2];
-  const output = process.argv[3];
-  const timeout = process.argv[4];
+  const type = process.argv[2]
+  const url = process.argv[3];
+  const output = process.argv[4];
+  const timeout = process.argv[5];
 
   console.log(`Processing ${url} to ${output} with timeout set to ${timeout} ms`);
   // '--no-sandbox' is set to allow running on Docker without '--cap-add SYS_ADMIN'
@@ -77,22 +92,10 @@ async function exportPdf(index) {
   page.setDefaultNavigationTimeout(0);
   await page.setCacheEnabled(false);
   await page.goto(url, { waitUntil: 'networkidle0', timeout: timeout });
-
-  const spinner = [ '💚', '💛', '💙', '💜', '🧡' ];
-  let index = 0;
-  await screenshot(page, index);
-  while (await hasNextSlide(page)) {
-    process.stdout.clearLine();
-    process.stdout.cursorTo(0);
-    process.stdout.write(" " + spinner[index % spinner.length] + " Generating slide #" + index + ": " + await currentSlide(page));
-    index++;
-    await nextSlide(page);
-    await delay(1000);
-    await screenshot(page, index);
+  if (type === 'exportToPdf') {
+    await exportToPdf(page, output);
+  } else if (type === 'printToPdf') {
+    await printToPdf(page, output, timeout);
   }
-  process.stdout.clearLine();
-  process.stdout.cursorTo(0);
-
   await browser.close();
-  await exportPdf(index);
 })();
