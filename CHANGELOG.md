@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.2.1] - 2022-03-13
+- Fix deprecated option for yq
+
 ## [2.2.0] - 2021-12-02
 ### Added
 - `deck print` output to PDF (print format)
@@ -56,6 +59,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Full change of `sac` command line
 
 [Unreleased]: https://github.com/sacproj/sac-cli/compare/2.2.0...HEAD
+[2.2.1]: https://github.com/sacproj/sac-cli/compare/2.2.0...2.2.1
 [2.2.0]: https://github.com/sacproj/sac-cli/compare/2.1.0...2.2.0
 [2.1.0]: https://github.com/sacproj/sac-cli/compare/2.0.8...2.1.0
 [2.0.8]: https://github.com/sacproj/sac-cli/compare/2.0.7...2.0.8
