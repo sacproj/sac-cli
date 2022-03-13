@@ -381,7 +381,7 @@ function _deck_code() {
 
   local REV=()
   local THEMES=()
-  mapfile -t REV < <(yq -j eval '.theme' config.yaml | jq -r '.[]')
+  mapfile -t REV < <(yq '-o=json' eval '.theme' config.yaml | jq -r '.[]')
 
   # Reverse themes array because of Hugo ordering
   for (( i=${#REV[@]}-1; i>=0; i-- )); do
